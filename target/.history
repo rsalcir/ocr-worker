@@ -1,0 +1,16 @@
+;reload; set _root_.org.jetbrains.sbt.StructureKeys.sbtStructureOptions in Global := "download resolveClassifiers resolveSbtClassifiers" ;*/*:dumpStructureTo C:/Users/alcirsantos/AppData/Local/Temp/sbt-structure.xml; session clear-all
+assembly
+;reload; set _root_.org.jetbrains.sbt.StructureKeys.sbtStructureOptions in Global := "download resolveClassifiers resolveSbtClassifiers" ;*/*:dumpStructureTo C:/Users/alcirsantos/AppData/Local/Temp/sbt-structure.xml; session clear-all
+docker
+update
+;reload; set _root_.org.jetbrains.sbt.StructureKeys.sbtStructureOptions in Global := "download resolveClassifiers resolveSbtClassifiers" ;*/*:dumpStructureTo C:/Users/alcirsantos/AppData/Local/Temp/sbt-structure.xml; session clear-all
+docker
+assembly
+clean
+assembly
+;reload; set _root_.org.jetbrains.sbt.StructureKeys.sbtStructureOptions in Global := "download resolveClassifiers resolveSbtClassifiers" ;*/*:dumpStructureTo C:/Users/alcirsantos/AppData/Local/Temp/sbt-structure.xml; session clear-all
+compile
+assembly
+;reload; set _root_.org.jetbrains.sbt.StructureKeys.sbtStructureOptions in Global := "download resolveClassifiers resolveSbtClassifiers" ;*/*:dumpStructureTo C:/Users/alcirsantos/AppData/Local/Temp/sbt-structure.xml; session clear-all
+assembly
+docker
