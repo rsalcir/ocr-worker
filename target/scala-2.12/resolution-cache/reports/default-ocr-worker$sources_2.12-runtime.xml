@@ -7,7 +7,7 @@
 		revision="0.1"
 		conf="runtime"
 		confs="default, compile, runtime, test, provided, optional"
-		date="20180702235039"/>
+		date="20180703005556"/>
 	<dependencies>
 		<module organisation="se.marcuslonnberg" name="sbt-docker">
 			<revision name="1.5.0" status="release" pubdate="20171002154703" resolver="sbt-chain" artresolver="sbt-chain" homepage="https://github.com/marcuslonnberg/sbt-docker" extra-scalaVersion="2.12" extra-sbtVersion="1.0" downloaded="false" searched="false" default="false" conf="default, compile, runtime, default(compile), master" position="90">
