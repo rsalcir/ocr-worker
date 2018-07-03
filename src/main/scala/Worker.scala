@@ -7,7 +7,7 @@ import scala.collection.JavaConversions._
 
 object Worker extends App {
   val topic = "lista_de_nomes"
-  val brokers = "192.168.1.13:9092"
+  val brokers = "localhost:9092"
   val groupId = "group1"
 
   val properties = createConsumerConfig(brokers, groupId)

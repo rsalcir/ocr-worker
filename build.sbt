@@ -1,12 +1,9 @@
 name := "ocr-worker"
-
 version := "0.1"
-
 scalaVersion := "2.12.6"
 
 libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka_2.10" % "0.10.0.0" withSources() exclude("org.slf4j","slf4j-log4j12") exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-  "log4j" % "log4j" % "1.2.15" exclude("javax.jms", "jms"),
   "org.apache.spark" % "spark-core_2.10" % "1.2.1",
   "org.apache.spark" % "spark-streaming_2.10" % "1.2.1",
   "org.apache.spark" % "spark-streaming-kafka_2.10" % "1.2.1"
@@ -20,7 +17,6 @@ assemblyMergeStrategy in assembly := {
 }
 
 dockerfile in docker := {
-  // The assembly task generates a fat JAR file
   val artifact: File = assembly.value
   val artifactTargetPath = s"/app/${artifact.name}"
 
