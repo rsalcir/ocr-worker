@@ -1,0 +1,6 @@
+docker run -p 2181:2181 -p 9092:9092 -e ADVERTISED_HOST=127.0.0.1 johnnypark/kafka-zookeeper
+
+docker run -p 8085:8085 worker-ocr
+
+docker run --network="host" default/ocr-worker
+

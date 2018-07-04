@@ -2,11 +2,12 @@ import java.util.concurrent._
 import java.util.{Collections, Properties}
 
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
+import scalaj.http.Http
 
 import scala.collection.JavaConversions._
 
 object Worker extends App {
-  val topic = "lista_de_nomes"
+  val topic = "documentosTeste"
   val brokers = "localhost:9092"
   val groupId = "group1"
 
@@ -41,7 +42,16 @@ object Worker extends App {
         while (true) {
           val records = consumer.poll(1000)
           for (record <- records) {
-            System.out.println(record.value())
+            System.out.println(s"inicio -  ${System.currentTimeMillis()}")
+            System.out.println(s"URL:${record.value()}")
+            var textoProcessado = Http("http://localhost:8085/ocr")
+              .postData(record.value())
+              .header("Content-Type", "application/json")
+              .header("Charset", "UTF-8")
+              .asString.body
+            System.out.println(textoProcessado)
+            System.out.println(s"fim - ${System.currentTimeMillis()}")
+            System.out.println("---------------------------------------")
           }
         }
       }
