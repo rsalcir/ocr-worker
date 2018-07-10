@@ -1,6 +1,19 @@
-docker run -p 2181:2181 -p 9092:9092 -e ADVERTISED_HOST=127.0.0.1 johnnypark/kafka-zookeeper
-
-docker run -p 8085:8085 worker-ocr
-
 docker run --network="host" default/ocr-worker
 
+#-------------------Images Docker
+docker run -p 2181:2181 -p 9092:9092 -e ADVERTISED_HOST=127.0.0.1 johnnypark/kafka-zookeeper
+docker pull johnnypark/kafka-zookeeper
+
+
+docker run -p 3000:3000 rafaelteixeira/teixeiract
+docker pull rafaelteixeira/teixeiract
+
+
+#------------------- Util Docker
+# Delete all containers
+docker rm $(docker ps -a -q)
+
+# Delete all images
+docker rmi $(docker images -q)
+
+https://cdn.pbrd.co/images/HtIeZzp.jpg
