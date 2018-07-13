@@ -3,26 +3,33 @@ import java.util.{Collections, Properties}
 
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+import play.api.libs.json.{JsValue, _}
 import scalaj.http.Http
 
 import scala.collection.JavaConversions._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success}
 
 object Worker extends App {
   val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = "arquivosNaoProcessados"
   val FILA_DE_DOCUMENTOS_PROCESSADOS = "arquivosProcessados"
-  val BROKERS = "localhost:9092"
+  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = "arquivosComErro"
+  val CLIENTE_PARA_SUCESSO = "OcrProdutorDaFilaDeSucesso"
+  val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro"
+  val SERVICO_OCR = "http://localhost:3000"
+  val HOST = "localhost:9092"
   val GROUP_ID = "group1"
 
-  val consumerProperties = createConsumerConfig(BROKERS, GROUP_ID)
-  val consumer = new KafkaConsumer[String, String](consumerProperties)
-
-  val producerProperties =createProducerConfig(BROKERS)
+  val propriedadesDoConsumidorDaFila = montarConfiguracoesDoConsumidorDaFila()
+  val consumidorDaFila = new KafkaConsumer[String, String](propriedadesDoConsumidorDaFila)
   var executor: ExecutorService = null
 
-  def createConsumerConfig(brokers: String, groupId: String): Properties = {
+  def montarConfiguracoesDoConsumidorDaFila(): Properties = {
     val properties = new Properties()
-    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers)
-    properties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, HOST)
+    properties.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
     properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
     properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000")
     properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000")
@@ -31,45 +38,75 @@ object Worker extends App {
     properties
   }
 
-  def createProducerConfig(brokers: String): Properties = {
+  def montarConfiguracoesDoProdutorDaFila(identificadorDoCliente: String): Properties = {
     val properties = new Properties()
-    properties.put("bootstrap.servers", brokers)
-    properties.put("client.id", "OCRProducer")
+    properties.put("bootstrap.servers", HOST)
+    properties.put("client.id", identificadorDoCliente)
     properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
     properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
     properties
   }
 
   def shutdown() = {
-    if (consumer != null)
-      consumer.close();
+    if (consumidorDaFila != null)
+      consumidorDaFila.close();
     if (executor != null)
       executor.shutdown();
   }
 
-  def run() = {
-    System.out.println("***************************INICIO_DA_LEITURA*******************************")
-    consumer.subscribe(Collections.singletonList(this.FILA_DE_DOCUMENTOS_NAO_PROCESSADOS))
+  def executar() = {
+    consumidorDaFila.subscribe(Collections.singletonList(this.FILA_DE_DOCUMENTOS_NAO_PROCESSADOS))
     Executors.newSingleThreadExecutor.execute(new Runnable {
       override def run(): Unit = {
         while (true) {
-          val records = consumer.poll(1000)
-          for (record <- records) {
-            System.out.println(s"inicio -  ${System.currentTimeMillis()}")
-            System.out.println(s"URL:${record.value()}")
-            var textoProcessado = Http("http://localhost:3000").param("image", record.value()).asString.body
-            val producer = new KafkaProducer[String, String](producerProperties)
-            val texto = new ProducerRecord[String, String](FILA_DE_DOCUMENTOS_PROCESSADOS, textoProcessado)
-            producer.send(texto)
-            producer.close()
-            System.out.println(textoProcessado)
-            System.out.println(s"fim - ${System.currentTimeMillis()}")
-            System.out.println("---------------------------------------")
+          val mensagensDaFila = consumidorDaFila.poll(1000)
+          for (mensagemDaFila <- mensagensDaFila) {
+            val mensagem: JsValue = Json.parse(mensagemDaFila.value())
+            executarOcr(mensagem).onComplete {
+              case Success(textoProcessado) => {
+                val mensagemParaFila = montarMensagemDeSucessoNoOcr(mensagem, textoProcessado)
+                val propriedadesDoProdutorDaFilaDeSucesso = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
+                enviarMensagemParaFila(mensagemParaFila, FILA_DE_DOCUMENTOS_PROCESSADOS, propriedadesDoProdutorDaFilaDeSucesso)
+              }
+              case Failure(erro) => {
+                val mensagemParaFila = montarMensagemDeErroNoOcr(mensagem)
+                val propriedadesDoProdutorDaFilaDeErros = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_ERRO)
+                enviarMensagemParaFila(mensagemParaFila, FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS, propriedadesDoProdutorDaFilaDeErros)
+              }
+            }
+            Thread.sleep(5000)
           }
         }
       }
     })
   }
 
-  run()
+  def executarOcr(mensagem: JsValue): Future[String] = Future {
+    def executar(): Future[String] = Future {
+      val url = (mensagem \ "url").as[String]
+      Http(SERVICO_OCR).param("image", url).asString.body
+    }
+
+    Await.result(executar(), 30 second)
+  }
+
+  def montarMensagemDeSucessoNoOcr(mensagem: JsValue, textoProcessado: String): String = {
+    val identificador = (mensagem \ "id").as[String]
+    s"""{"id" : "${identificador}", "texto" : ${textoProcessado}}"""
+  }
+
+  def montarMensagemDeErroNoOcr(mensagem: JsValue): String = {
+    val identificador = (mensagem \ "id").as[String]
+    val url = (mensagem \ "url").as[String]
+    s"""{"id" : "${identificador}", "url" : ${url}}"""
+  }
+
+  def enviarMensagemParaFila(mensagem: String, fila: String, propriedadesDaFila: Properties) = {
+    val produtorDaFila = new KafkaProducer[String, String](propriedadesDaFila)
+    val mensagemParaFila = new ProducerRecord[String, String](fila, mensagem)
+    produtorDaFila.send(mensagemParaFila)
+    produtorDaFila.close()
+  }
+
+  executar()
 }
