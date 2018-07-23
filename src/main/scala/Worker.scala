@@ -13,13 +13,15 @@ import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 
 object Worker extends App {
-  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = "arquivosNaoProcessados"
-  val FILA_DE_DOCUMENTOS_PROCESSADOS = "arquivosProcessados"
-  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = "arquivosComErro"
+
+  val SERVICO_OCR = args(0)
+  val HOST = args(1)
+  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = args(2)
+  val FILA_DE_DOCUMENTOS_PROCESSADOS = args(3)
+  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = args(4)
+
   val CLIENTE_PARA_SUCESSO = "OcrProdutorDaFilaDeSucesso"
   val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro"
-  val SERVICO_OCR = "http://localhost:3000"
-  val HOST = "localhost:9092"
   val GROUP_ID = "group1"
 
   val propriedadesDoConsumidorDaFila = montarConfiguracoesDoConsumidorDaFila()
