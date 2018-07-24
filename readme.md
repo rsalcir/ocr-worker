@@ -2,11 +2,11 @@
 
 #Instalação
 
--> docker pull johnnypark/kafka-zookeeper
+* docker pull johnnypark/kafka-zookeeper
 
--> docker pull rafaelteixeira/teixeiract
+* docker pull rafaelteixeira/teixeiract
 
--> docker pull rsalcir/ocr-worker
+* docker pull rsalcir/ocr-worker
  
 #Execução
 
@@ -22,3 +22,11 @@
 #Construir o container local
 
 * execute o comando sbt docker
+
+#Docker Utils
+
+* Delete todos os containers
+ => docker rm $(docker ps -a -q)
+
+* Delete todas as images
+ => docker rmi $(docker images -q)
