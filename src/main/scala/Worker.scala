@@ -57,6 +57,7 @@ object Worker extends App {
   }
 
   def executar() = {
+    System.out.println("-> worker em execução!")
     consumidorDaFila.subscribe(Collections.singletonList(this.FILA_DE_DOCUMENTOS_NAO_PROCESSADOS))
     Executors.newSingleThreadExecutor.execute(new Runnable {
       override def run(): Unit = {
