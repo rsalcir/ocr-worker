@@ -19,8 +19,16 @@
 * inicie o worker
  => docker run --network="host" rsalcir/ocr-worker http://localhost:3000 localhost:9092 arquivosNaoProcessados arquivosProcessados arquivosComErro
  
-#Formato de mensagem para fila
+#Formato da mensagem para fila de entrada
  
+{"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
+
+#Formato da mensagem para fila sucesso
+
+{"id" : "123", "texto" : "blablablablablablablablablablablablablablablablablabla..."}
+
+#Formato da mensagem para fila erro
+
 {"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
   
 #Construir o container local
