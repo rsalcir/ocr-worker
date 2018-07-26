@@ -67,7 +67,7 @@ docker run --network="host" rsalcir/ocr-worker
 ``` sh
 sbt docker
 ```
-#Docker Utils
+#Comandos docker uteis
 * Delete todos os containers
 ``` sh
 docker rm $(docker ps -a -q)
