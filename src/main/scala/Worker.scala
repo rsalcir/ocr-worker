@@ -14,15 +14,14 @@ import scala.util.{Failure, Success}
 
 object Worker extends App {
 
-  val SERVICO_OCR = args(0)
-  val HOST = args(1)
-  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = args(2)
-  val FILA_DE_DOCUMENTOS_PROCESSADOS = args(3)
-  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = args(4)
+  val SERVICO_OCR = sys.env("HOST_SERVICO_OCR")
+  val HOST = sys.env("HOST_KAFKA")
+  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = sys.env("FILA_DE_DOCUMENTOS_NAO_PROCESSADOS")
+  val FILA_DE_DOCUMENTOS_PROCESSADOS = sys.env("FILA_DE_DOCUMENTOS_PROCESSADOS")
+  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = sys.env("FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS")
 
   val CLIENTE_PARA_SUCESSO = "OcrProdutorDaFilaDeSucesso"
   val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro"
-  val GROUP_ID = "group1"
 
   val propriedadesDoConsumidorDaFila = montarConfiguracoesDoConsumidorDaFila()
   val consumidorDaFila = new KafkaConsumer[String, String](propriedadesDoConsumidorDaFila)
@@ -31,7 +30,7 @@ object Worker extends App {
   def montarConfiguracoesDoConsumidorDaFila(): Properties = {
     val properties = new Properties()
     properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, HOST)
-    properties.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID)
+    properties.put(ConsumerConfig.GROUP_ID_CONFIG, "group1")
     properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true")
     properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000")
     properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000")
@@ -57,6 +56,7 @@ object Worker extends App {
   }
 
   def executar() = {
+    exibiVariaveisDeAmbienteConfiguradas()
     System.out.println("-> worker em execução!")
     consumidorDaFila.subscribe(Collections.singletonList(this.FILA_DE_DOCUMENTOS_NAO_PROCESSADOS))
     Executors.newSingleThreadExecutor.execute(new Runnable {
@@ -82,6 +82,16 @@ object Worker extends App {
         }
       }
     })
+  }
+
+  def exibiVariaveisDeAmbienteConfiguradas() = {
+    System.out.println("-> variaveis de ambiente configuradas")
+    val variaveisDeAmbiente = Map("HOST_SERVICO_OCR" -> SERVICO_OCR,
+      "HOST_KAFKA" -> HOST,
+      "FILA_DE_DOCUMENTOS_NAO_PROCESSADOS" -> FILA_DE_DOCUMENTOS_NAO_PROCESSADOS,
+      "FILA_DE_DOCUMENTOS_PROCESSADOS" -> FILA_DE_DOCUMENTOS_PROCESSADOS,
+      "FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS" -> FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS)
+    for ((variavel, valorDefinido) <- variaveisDeAmbiente) println(s"-ENV $variavel=$valorDefinido")
   }
 
   def executarOcr(mensagem: JsValue): Future[String] = Future {

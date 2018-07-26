@@ -1,44 +1,53 @@
 #Ocr-Worker
 
 #Instalação
+``` sh
+docker pull johnnypark/kafka-zookeeper
+docker pull rafaelteixeira/teixeiract
+docker pull rsalcir/ocr-worker
+```
 
-* docker pull johnnypark/kafka-zookeeper
-
-* docker pull rafaelteixeira/teixeiract
-
-* docker pull rsalcir/ocr-worker
- 
 #Execução
+* iniciando o serviço do kafka
+``` sh
+docker run -p 2181:2181 -p 9092:9092 -e ADVERTISED_HOST=127.0.0.1 johnnypark/kafka-zookeeper
+```
+* iniciando o serviço de ocr
+``` sh
+docker run -p 3000:3000 rafaelteixeira/teixeiract
+```
+* iniciando o worker
 
-* inicie o serviço do kafka
- => docker run -p 2181:2181 -p 9092:9092 -e ADVERTISED_HOST=127.0.0.1 johnnypark/kafka-zookeeper
- 
-* inicie o serviço de ocr
- => docker run -p 3000:3000 rafaelteixeira/teixeiract
- 
-* inicie o worker
- => docker run --network="host" rsalcir/ocr-worker http://localhost:3000 localhost:9092 arquivosNaoProcessados arquivosProcessados arquivosComErro
- 
+-Definindo uma ou mais variaveis de ambiente:
+``` sh
+docker run --network="host" -e FILA_DE_DOCUMENTOS_NAO_PROCESSADOS=nomeDaFilaDeNaoProcessados -e FILA_DE_DOCUMENTOS_PROCESSADOS=nomeDaFilaDeProcessado -e ... rsalcir/ocr-worker
+```
+-Utilizando variaveis de ambiente padrão:
+``` sh
+docker run --network="host" rsalcir/ocr-worker
+```
 #Formato da mensagem para fila de entrada
- 
+``` sh
 {"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
-
+```
 #Formato da mensagem para fila sucesso
-
+``` sh
 {"id" : "123", "texto" : "blablablablablablablablablablablablablablablablablabla..."}
-
+```
 #Formato da mensagem para fila erro
-
+``` sh
 {"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
-  
+```
 #Construir o container local
-
-* execute o comando sbt docker
-
+``` sh
+sbt docker
+```
 #Docker Utils
-
 * Delete todos os containers
- => docker rm $(docker ps -a -q)
-
+``` sh
+docker rm $(docker ps -a -q)
+```
 * Delete todas as images
- => docker rmi $(docker images -q)
+``` sh
+docker rmi $(docker images -q)
+ ```
