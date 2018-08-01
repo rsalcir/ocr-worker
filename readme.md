@@ -55,7 +55,7 @@ docker run --network="host" rsalcir/ocr-worker
 ```
 #Formato da mensagem para fila de entrada
 ``` sh
-{"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
+{"id" : "123", "url" : "https://minhaImagem.jpg"}
 ```
 #Formato da mensagem para fila sucesso
 ``` sh
@@ -63,7 +63,7 @@ docker run --network="host" rsalcir/ocr-worker
 ```
 #Formato da mensagem para fila erro
 ``` sh
-{"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
+{"id" : "123", "url" : "https://minhaImagem.jpg"}
 ```
 #Construir o container local
 ``` sh
