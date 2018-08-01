@@ -1,4 +1,5 @@
 #Ocr-Worker
+![screenshot](diagrama_de_funcionamento.png)
 
 #Instalação
 ``` sh
