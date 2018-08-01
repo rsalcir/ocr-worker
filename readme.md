@@ -65,7 +65,7 @@ docker run --network="host" rsalcir/ocr-worker
 ``` sh
 {"id" : "123", "url" : "https://minhaImagem.jpg"}
 ```
-## Construir o container local
+## Construindo o container local
 ``` sh
 sbt docker
 ```
