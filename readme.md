@@ -1,14 +1,16 @@
-#Ocr-Worker
+[![Build Status](https://travis-ci.org/rsalcir/ocr-worker.svg?branch=master)](https://travis-ci.org/rsalcir/ocr-worker)
+
+# Ocr-Worker
 ![screenshot](diagrama_de_funcionamento.png)
 
-#Instalação
+## Instalação
 ``` sh
 docker pull johnnypark/kafka-zookeeper
 docker pull rafaelteixeira/teixeiract
 docker pull rsalcir/ocr-worker
 ```
 
-#Execução
+## Execução
 * iniciando o serviço do kafka
 ``` sh
 docker run -p 2181:2181 -p 9092:9092 -e ADVERTISED_HOST=127.0.0.1 johnnypark/kafka-zookeeper
@@ -52,23 +54,23 @@ FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS=arquivosComErro
 ``` sh
 docker run --network="host" rsalcir/ocr-worker
 ```
-#Formato da mensagem para fila de entrada
+## Formato da mensagem para fila de entrada
 ``` sh
-{"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
+{"id" : "123", "url" : "https://minhaImagem.jpg"}
 ```
-#Formato da mensagem para fila sucesso
+## Formato da mensagem para fila sucesso
 ``` sh
 {"id" : "123", "texto" : "blablablablablablablablablablablablablablablablablabla..."}
 ```
-#Formato da mensagem para fila erro
+## Formato da mensagem para fila erro
 ``` sh
-{"id" : "123", "url" : "https://image.slidesharecdn.com/portugus2b-170225215804/95/texto-verbal-e-noverbal-8-638.jpg"}
+{"id" : "123", "url" : "https://minhaImagem.jpg"}
 ```
-#Construir o container local
+## Construindo o container local
 ``` sh
 sbt docker
 ```
-#Comandos docker uteis
+## Comandos docker uteis
 * Deletar todos os containers
 ``` sh
 docker rm $(docker ps -a -q)
