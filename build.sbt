@@ -8,7 +8,8 @@ libraryDependencies ++= Seq("com.typesafe.play" %% "play-json" % "2.6.9",
   "org.apache.spark" % "spark-core_2.10" % "1.2.1",
   "org.apache.spark" % "spark-streaming_2.10" % "1.2.1",
   "org.apache.spark" % "spark-streaming-kafka_2.10" % "1.2.1",
-  "org.scalaj" %% "scalaj-http" % "2.4.0"
+  "org.scalaj" %% "scalaj-http" % "2.4.0",
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
 
 enablePlugins(DockerPlugin)

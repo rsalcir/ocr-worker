@@ -68,11 +68,11 @@ docker run --network="host" rsalcir/ocr-worker
 sbt docker
 ```
 #Comandos docker uteis
-* Delete todos os containers
+* Deletar todos os containers
 ``` sh
 docker rm $(docker ps -a -q)
 ```
-* Delete todas as images
+* Deletar todas as images
 ``` sh
 docker rmi $(docker images -q)
  ```

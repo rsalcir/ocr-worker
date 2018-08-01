@@ -6,11 +6,12 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import play.api.libs.json.{JsValue, _}
 import scalaj.http.Http
 
-import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
+
+import scala.collection.JavaConversions._
 
 object Worker extends App {
 
@@ -56,7 +57,7 @@ object Worker extends App {
   }
 
   def executar() = {
-    exibiVariaveisDeAmbienteConfiguradas()
+    exibirVariaveisDeAmbienteConfiguradas()
     System.out.println("-> worker em execução!")
     consumidorDaFila.subscribe(Collections.singletonList(this.FILA_DE_DOCUMENTOS_NAO_PROCESSADOS))
     Executors.newSingleThreadExecutor.execute(new Runnable {
@@ -84,7 +85,7 @@ object Worker extends App {
     })
   }
 
-  def exibiVariaveisDeAmbienteConfiguradas() = {
+  def exibirVariaveisDeAmbienteConfiguradas() = {
     System.out.println("-> variaveis de ambiente configuradas")
     val variaveisDeAmbiente = Map("HOST_SERVICO_OCR" -> SERVICO_OCR,
       "HOST_KAFKA" -> HOST,
@@ -111,7 +112,7 @@ object Worker extends App {
   def montarMensagemDeErroNoOcr(mensagem: JsValue): String = {
     val identificador = (mensagem \ "id").as[String]
     val url = (mensagem \ "url").as[String]
-    s"""{"id" : "${identificador}", "url" : ${url}}"""
+    s"""{"id" : "${identificador}", "url" : "${url}"}"""
   }
 
   def enviarMensagemParaFila(mensagem: String, fila: String, propriedadesDaFila: Properties) = {
