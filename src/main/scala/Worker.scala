@@ -1,7 +1,7 @@
 import java.util.concurrent._
 import java.util.{Collections, Properties}
 
-import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
+import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer, ConsumerRecords}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import play.api.libs.json.{JsValue, _}
 import scalaj.http.Http
@@ -15,11 +15,11 @@ import scala.collection.JavaConversions._
 
 object Worker extends App {
 
-  val SERVICO_OCR = sys.env("HOST_SERVICO_OCR")
-  val HOST = sys.env("HOST_KAFKA")
-  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = sys.env("FILA_DE_DOCUMENTOS_NAO_PROCESSADOS")
-  val FILA_DE_DOCUMENTOS_PROCESSADOS = sys.env("FILA_DE_DOCUMENTOS_PROCESSADOS")
-  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = sys.env("FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS")
+  val SERVICO_OCR = sys.env.getOrElse("HOST_SERVICO_OCR", "http://localhost:3000")
+  val HOST = sys.env.getOrElse("HOST_KAFKA", "localhost:9092")
+  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = sys.env.getOrElse("FILA_DE_DOCUMENTOS_NAO_PROCESSADOS", "ArquivosNaoProcessados_DEV")
+  val FILA_DE_DOCUMENTOS_PROCESSADOS = sys.env.getOrElse("FILA_DE_DOCUMENTOS_PROCESSADOS", "ArquivosProcessados_DEV") 
+  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = sys.env.getOrElse("FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS", "ArquivosComErro_DEV")
 
   val CLIENTE_PARA_SUCESSO = "OcrProdutorDaFilaDeSucesso"
   val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro"
@@ -64,25 +64,52 @@ object Worker extends App {
       override def run(): Unit = {
         while (true) {
           val mensagensDaFila = consumidorDaFila.poll(1000)
-          for (mensagemDaFila <- mensagensDaFila) {
-            val mensagem: JsValue = Json.parse(mensagemDaFila.value())
-            executarOcr(mensagem).onComplete {
-              case Success(textoProcessado) => {
-                val mensagemParaFila = montarMensagemDeSucessoNoOcr(mensagem, textoProcessado)
-                val propriedadesDoProdutorDaFilaDeSucesso = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
-                enviarMensagemParaFila(mensagemParaFila, FILA_DE_DOCUMENTOS_PROCESSADOS, propriedadesDoProdutorDaFilaDeSucesso)
-              }
-              case Failure(erro) => {
-                val mensagemParaFila = montarMensagemDeErroNoOcr(mensagem)
-                val propriedadesDoProdutorDaFilaDeErros = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_ERRO)
-                enviarMensagemParaFila(mensagemParaFila, FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS, propriedadesDoProdutorDaFilaDeErros)
-              }
-            }
-            Thread.sleep(5000)
-          }
+          processarMensagensDaFila(mensagensDaFila);
         }
       }
     })
+  }
+
+  def processarMensagensDaFila(mensagensDaFila: ConsumerRecords[String, String]) = {
+    for (mensagemDaFila <- mensagensDaFila) {
+      
+      if(mensagemDaFila.value() != null && !mensagemDaFila.value().isEmpty()){
+        val mensagem = converterMensagemParaJson(mensagemDaFila.value())
+        
+        if(mensagem != null){
+          executarOcr(mensagem).onComplete {
+            case Success(textoProcessado) => {
+              System.out.println("-> Texto processado do OCR")
+              val mensagemParaFila = montarMensagemDeSucessoNoOcr(mensagem, textoProcessado)
+              val propriedadesDoProdutorDaFilaDeSucesso = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
+              enviarMensagemParaFila(mensagemParaFila, FILA_DE_DOCUMENTOS_PROCESSADOS, propriedadesDoProdutorDaFilaDeSucesso)
+            }
+            case Failure(erro) => {
+              System.out.println("-> Erro ao processar no OCR: " + mensagem)
+              val mensagemParaFila = montarMensagemDeErroNoOcr(mensagem)
+              val propriedadesDoProdutorDaFilaDeErros = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_ERRO)
+              enviarMensagemParaFila(mensagemParaFila, FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS, propriedadesDoProdutorDaFilaDeErros)
+            }
+          }
+        }
+        
+      }
+
+    }
+  }
+
+  def converterMensagemParaJson(mensagem: String): JsValue = {
+    
+    try{
+      val json = Json.parse(mensagem)
+      return json
+    }
+    catch {
+      case e: Exception => {
+        System.out.println("-> Erro ao converter json")
+        return null
+      }
+    }
   }
 
   def exibirVariaveisDeAmbienteConfiguradas() = {
