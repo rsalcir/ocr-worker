@@ -24,7 +24,7 @@ object Worker extends App {
   val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = sys.env.getOrElse("FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS", "ArquivosComErro_DEV")
 
   val CLIENTE_PARA_SUCESSO = "OcrProdutorDaFilaDeSucesso"
-  val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro"
+  val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro" 
 
   val propriedadesDoConsumidorDaFila = montarConfiguracoesDoConsumidorDaFila()
   val consumidorDaFila = new KafkaConsumer[String, String](propriedadesDoConsumidorDaFila)
@@ -115,13 +115,13 @@ object Worker extends App {
   def executarOcrEProcessarRetorno(mensagem: JsValue){
     executarOcr(mensagem).onComplete {
       case Success(textoProcessado) => {
-        System.out.println("-> Texto processado do OCR")
+        System.out.println("-> Texto processado no OCR: " + mensagem)
         val mensagemParaFila = montarMensagemDeSucessoNoOcr(mensagem, textoProcessado)
         val propriedadesDoProdutorDaFilaDeSucesso = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
         enviarMensagemParaFila(mensagemParaFila, FILA_DE_DOCUMENTOS_PROCESSADOS, propriedadesDoProdutorDaFilaDeSucesso)
       }
       case Failure(erro) => {
-        System.out.println("-> Erro ao processar no OCR: " + mensagem)
+        System.out.println("-> Erro ao processar no OCR: " + mensagem + " | Erro: " + erro)
         val mensagemParaFila = montarMensagemDeErroNoOcr(mensagem)
         val propriedadesDoProdutorDaFilaDeErros = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_ERRO)
         enviarMensagemParaFila(mensagemParaFila, FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS, propriedadesDoProdutorDaFilaDeErros)
@@ -135,7 +135,7 @@ object Worker extends App {
       Http(SERVICO_OCR).param("image", url).asString.body
     }
 
-    Await.result(executar(), 30 second)
+    Await.result(executar(), 100 second)
   }
 
   def exibirVariaveisDeAmbienteConfiguradas() = {
@@ -169,6 +169,7 @@ object Worker extends App {
 
   def enviarMensagemParaFila(mensagem: String, fila: String, propriedadesDaFila: Properties) = {
     try{
+      Thread.currentThread().setContextClassLoader(null);
       val produtorDaFila = new KafkaProducer[String, String](propriedadesDaFila)
       val mensagemParaFila = new ProducerRecord[String, String](fila, mensagem)
       produtorDaFila.send(mensagemParaFila)
