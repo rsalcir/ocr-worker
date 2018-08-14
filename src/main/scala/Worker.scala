@@ -60,20 +60,7 @@ object Worker extends App {
 
   def executar() = {
     exibirVariaveisDeAmbienteConfiguradas()
-    System.out.println("-> worker em execução!")
-    
-    val dataDeInicio = new Date();  
-    val formatacaoDaData = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");  
-    val propriedadesDoProdutorDaFilaDeSucesso = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
-    enviarMensagemParaFila(formatacaoDaData.format(dataDeInicio), "InicioDaExecucaoDoWorker", propriedadesDoProdutorDaFilaDeSucesso)
-
-    testarApiOcr().onComplete {
-      case Success(textoProcessado) => {}
-      case Failure(erro) => {
-        System.out.println("-> Erro ao acessar API")
-      }
-    }
-    
+    inicializarLogs()
     consumidorDaFila.subscribe(Collections.singletonList(this.FILA_DE_DOCUMENTOS_NAO_PROCESSADOS))
     Executors.newSingleThreadExecutor.execute(new Runnable {
       override def run(): Unit = {
@@ -85,15 +72,29 @@ object Worker extends App {
     })
   }
 
+  def inicializarLogs() = {
+    System.out.println("-> worker em execução!")
+    
+    val propriedadesDoProdutor = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
+    val formatacaoDaData = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");  
+    val mensagem = "Work do OCR iniciado as " + formatacaoDaData.format(new Date())
+    val topico = "ExecucaoDosWorkes"
+    enviarMensagemParaFila(mensagem, topico, propriedadesDoProdutor)
+
+    testarApiOcr().onComplete {
+      case Success(textoProcessado) => {}
+      case Failure(erro) => {
+        System.out.println("-> Erro ao acessar API")
+      }
+    }
+  }
+
   def processarMensagensDaFila(mensagensDaFila: ConsumerRecords[String, String]) = {
     for (mensagemDaFila <- mensagensDaFila) {
-      
-      if(mensagemDaFila.value() != null && !mensagemDaFila.value().isEmpty()){
-        val mensagem = converterMensagemParaJson(mensagemDaFila.value())
-        
-        if(mensagem != null){
-          executarOcrEProcessarRetorno(mensagem)
-        }
+      if(mensagemDaFila.value() != null && !mensagemDaFila.value().isEmpty()) {
+        val mensagemEmJson = converterMensagemParaJson(mensagemDaFila.value())
+        if(mensagemEmJson != null)
+          executarOcrEProcessarRetorno(mensagemEmJson)
       }
     }
   }
