@@ -1,7 +1,9 @@
 import java.util.concurrent._
 import java.util.{Collections, Properties}
+import java.text.SimpleDateFormat;  
+import java.util.Date;  
 
-import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer}
+import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer, ConsumerRecords}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import play.api.libs.json.{JsValue, _}
 import scalaj.http.Http
@@ -15,14 +17,14 @@ import scala.collection.JavaConversions._
 
 object Worker extends App {
 
-  val SERVICO_OCR = sys.env("HOST_SERVICO_OCR")
-  val HOST = sys.env("HOST_KAFKA")
-  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = sys.env("FILA_DE_DOCUMENTOS_NAO_PROCESSADOS")
-  val FILA_DE_DOCUMENTOS_PROCESSADOS = sys.env("FILA_DE_DOCUMENTOS_PROCESSADOS")
-  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = sys.env("FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS")
+  val SERVICO_OCR = sys.env.getOrElse("HOST_SERVICO_OCR", "http://localhost:3000")
+  val HOST = sys.env.getOrElse("HOST_KAFKA", "localhost:9092")
+  val FILA_DE_DOCUMENTOS_NAO_PROCESSADOS = sys.env.getOrElse("FILA_DE_DOCUMENTOS_NAO_PROCESSADOS", "ArquivosNaoProcessados_DEV")
+  val FILA_DE_DOCUMENTOS_PROCESSADOS = sys.env.getOrElse("FILA_DE_DOCUMENTOS_PROCESSADOS", "ArquivosProcessados_DEV") 
+  val FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS = sys.env.getOrElse("FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS", "ArquivosComErro_DEV")
 
   val CLIENTE_PARA_SUCESSO = "OcrProdutorDaFilaDeSucesso"
-  val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro"
+  val CLIENTE_PARA_ERRO = "OcrProdutorDaFilaDeErro" 
 
   val propriedadesDoConsumidorDaFila = montarConfiguracoesDoConsumidorDaFila()
   val consumidorDaFila = new KafkaConsumer[String, String](propriedadesDoConsumidorDaFila)
@@ -58,31 +60,83 @@ object Worker extends App {
 
   def executar() = {
     exibirVariaveisDeAmbienteConfiguradas()
-    System.out.println("-> worker em execução!")
+    inicializarLogs()
     consumidorDaFila.subscribe(Collections.singletonList(this.FILA_DE_DOCUMENTOS_NAO_PROCESSADOS))
     Executors.newSingleThreadExecutor.execute(new Runnable {
       override def run(): Unit = {
         while (true) {
           val mensagensDaFila = consumidorDaFila.poll(1000)
-          for (mensagemDaFila <- mensagensDaFila) {
-            val mensagem: JsValue = Json.parse(mensagemDaFila.value())
-            executarOcr(mensagem).onComplete {
-              case Success(textoProcessado) => {
-                val mensagemParaFila = montarMensagemDeSucessoNoOcr(mensagem, textoProcessado)
-                val propriedadesDoProdutorDaFilaDeSucesso = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
-                enviarMensagemParaFila(mensagemParaFila, FILA_DE_DOCUMENTOS_PROCESSADOS, propriedadesDoProdutorDaFilaDeSucesso)
-              }
-              case Failure(erro) => {
-                val mensagemParaFila = montarMensagemDeErroNoOcr(mensagem)
-                val propriedadesDoProdutorDaFilaDeErros = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_ERRO)
-                enviarMensagemParaFila(mensagemParaFila, FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS, propriedadesDoProdutorDaFilaDeErros)
-              }
-            }
-            Thread.sleep(5000)
-          }
+          processarMensagensDaFila(mensagensDaFila);
         }
       }
     })
+  }
+
+  def inicializarLogs() = {
+    System.out.println("-> worker em execução!")
+    
+    val propriedadesDoProdutor = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
+    val formatacaoDaData = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");  
+    val mensagem = "Work do OCR iniciado as " + formatacaoDaData.format(new Date())
+    val topico = "ExecucaoDosWorkes"
+    enviarMensagemParaFila(mensagem, topico, propriedadesDoProdutor)
+
+    testarApiOcr().onComplete {
+      case Success(textoProcessado) => {}
+      case Failure(erro) => {
+        System.out.println("-> Erro ao acessar API")
+      }
+    }
+  }
+
+  def processarMensagensDaFila(mensagensDaFila: ConsumerRecords[String, String]) = {
+    for (mensagemDaFila <- mensagensDaFila) {
+      if(mensagemDaFila.value() != null && !mensagemDaFila.value().isEmpty()) {
+        val mensagemEmJson = converterMensagemParaJson(mensagemDaFila.value())
+        if(mensagemEmJson != null)
+          executarOcrEProcessarRetorno(mensagemEmJson)
+      }
+    }
+  }
+
+  def converterMensagemParaJson(mensagem: String): JsValue = {
+    
+    try{
+      val json = Json.parse(mensagem)
+      return json
+    }
+    catch {
+      case e: Exception => {
+        System.out.println("-> Erro ao converter json")
+        return null
+      }
+    }
+  }
+
+  def executarOcrEProcessarRetorno(mensagem: JsValue){
+    executarOcr(mensagem).onComplete {
+      case Success(textoProcessado) => {
+        System.out.println("-> Texto processado no OCR: " + mensagem)
+        val mensagemParaFila = montarMensagemDeSucessoNoOcr(mensagem, textoProcessado)
+        val propriedadesDoProdutorDaFilaDeSucesso = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_SUCESSO)
+        enviarMensagemParaFila(mensagemParaFila, FILA_DE_DOCUMENTOS_PROCESSADOS, propriedadesDoProdutorDaFilaDeSucesso)
+      }
+      case Failure(erro) => {
+        System.out.println("-> Erro ao processar no OCR: " + mensagem + " | Erro: " + erro)
+        val mensagemParaFila = montarMensagemDeErroNoOcr(mensagem)
+        val propriedadesDoProdutorDaFilaDeErros = montarConfiguracoesDoProdutorDaFila(CLIENTE_PARA_ERRO)
+        enviarMensagemParaFila(mensagemParaFila, FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS, propriedadesDoProdutorDaFilaDeErros)
+      }
+    }
+  }
+
+  def executarOcr(mensagem: JsValue): Future[String] = Future {
+    def executar(): Future[String] = Future {
+      val url = (mensagem \ "url").as[String]
+      Http(SERVICO_OCR).param("image", url).asString.body
+    }
+
+    Await.result(executar(), 100 second)
   }
 
   def exibirVariaveisDeAmbienteConfiguradas() = {
@@ -95,10 +149,9 @@ object Worker extends App {
     for ((variavel, valorDefinido) <- variaveisDeAmbiente) println(s"-ENV $variavel=$valorDefinido")
   }
 
-  def executarOcr(mensagem: JsValue): Future[String] = Future {
+  def testarApiOcr(): Future[String] = Future {
     def executar(): Future[String] = Future {
-      val url = (mensagem \ "url").as[String]
-      Http(SERVICO_OCR).param("image", url).asString.body
+      Http(SERVICO_OCR).asString.body
     }
 
     Await.result(executar(), 30 second)
@@ -116,10 +169,17 @@ object Worker extends App {
   }
 
   def enviarMensagemParaFila(mensagem: String, fila: String, propriedadesDaFila: Properties) = {
-    val produtorDaFila = new KafkaProducer[String, String](propriedadesDaFila)
-    val mensagemParaFila = new ProducerRecord[String, String](fila, mensagem)
-    produtorDaFila.send(mensagemParaFila)
-    produtorDaFila.close()
+    try{
+      Thread.currentThread().setContextClassLoader(null);
+      val produtorDaFila = new KafkaProducer[String, String](propriedadesDaFila)
+      val mensagemParaFila = new ProducerRecord[String, String](fila, mensagem)
+      produtorDaFila.send(mensagemParaFila)
+      produtorDaFila.close()
+    }catch{
+      case e: Exception => {
+        System.out.println("-> Erro ao acessar Kafka: " + e.getMessage)
+      }
+    }
   }
 
   executar()
