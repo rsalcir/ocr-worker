@@ -68,6 +68,12 @@ docker run --network="host" rsalcir/ocr-worker
 ## Construindo o container local
 ``` sh
 sbt docker
+
+docker build -t rsalcir/ocr-worker:TAG .
+
+docker tag rsalcir/ocr-worker:TAG rsalcir/ocr-worker
+
+docker push rsalcir/ocr-worker
 ```
 ## Comandos docker uteis
 * Deletar todos os containers
