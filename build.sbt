@@ -26,11 +26,6 @@ dockerfile in docker := {
   new Dockerfile {
     from("openjdk:8-jre")
     add(artifact, artifactTargetPath)
-    env(Map[String,String]("HOST_SERVICO_OCR" -> "http://localhost:3000",
-      "HOST_KAFKA" -> "localhost:9092",
-      "FILA_DE_DOCUMENTOS_NAO_PROCESSADOS" -> "arquivosNaoProcessados",
-      "FILA_DE_DOCUMENTOS_PROCESSADOS" -> "arquivosProcessados",
-      "FILA_DE_ERRO_NO_PROCESSAMENTO_DOS_DOCUMENTOS" -> "arquivosComErro"))
     entryPoint("java", "-jar", artifactTargetPath)
   }
 }
